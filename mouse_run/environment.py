@@ -5,7 +5,7 @@ import random
 class Cell:
     def __init__(self, data, x, y):
         self.wall = (data == "X")
-        self.color = 'black' if self.wall else 'white'
+        self.color = ('black', (0, 0, 0)) if self.wall else ('white', (255, 255, 255))
         self.x = x
         self.y = y
 

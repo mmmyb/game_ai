@@ -10,3 +10,8 @@ if __name__ == "__main__":
             print "mouse: %s, cat: %s, cheese: %s" % (g.mouse.get_position(), g.cat.get_position(), g.cheese.get_position())
             g.eaten = 0
             g.feed = 0
+        if g.age % 1000000 == 0:
+            g.ai.dump("ai.json")
+        if g.age == 10000000:
+            g.show_game()
+        g.redraw()

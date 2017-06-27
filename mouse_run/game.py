@@ -2,20 +2,71 @@
 from environment import Environment
 from agent import Cat, Mouse, Cheese, Action
 from ai import AI
+import pygame
+import sys
+import time
 
 
 class Game:
     def __init__(self, map_file_name):
         self.env = Environment(map_file_name)
-        self.cat = Cat("orange", 0, 0)
-        self.mouse = Mouse("gray", 0, 0)
-        self.cheese = Cheese("yellow", 0, 0)
+        self.cat = Cat(("orange", (255, 165, 0)), 0, 0)
+        self.mouse = Mouse(("gray", (128, 128, 128)), 0, 0)
+        self.cheese = Cheese(("yellow", (255, 255, 0)), 0, 0)
         self.init_agents_position()
         self.action = Action()
         self.feed = 0
         self.eaten = 0
         self.age = 0
         self.ai = AI()
+        pygame.init()
+        self.size = 40
+        self.screen = None
+        self.activated = False
+
+    def show_game(self):
+        if self.screen is None:
+            self.screen = pygame.display.set_mode((self.env.width * self.size, self.env.height * self.size))
+            self.activated = True
+
+    def redraw(self):
+        if self.screen is None:
+            return
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+        self.redraw_cells()
+        self.redraw_cheese()
+        self.redraw_mouse()
+        self.redraw_cat()
+        pygame.display.set_caption("age:%s,feed:%s,eaten:%s" % (self.age, self.feed, self.eaten))
+        pygame.display.flip()
+        time.sleep(0.2)
+
+    def redraw_cells(self):
+        if self.screen is None:
+            return
+        for cell in self.env.get_all_cells():
+            self.screen.fill(cell.color[1], (
+                cell.x * self.size, cell.y * self.size, self.size, self.size))
+
+    def redraw_cat(self):
+        if self.screen is None:
+            return
+        self.screen.fill(self.cat.color[1], (
+            self.cat.x * self.size, self.cat.y * self.size, self.size, self.size))
+
+    def redraw_cheese(self):
+        if self.screen is None:
+            return
+        self.screen.fill(self.cheese.color[1], (
+            self.cheese.x * self.size, self.cheese.y * self.size, self.size, self.size))
+
+    def redraw_mouse(self):
+        if self.screen is None:
+            return
+        self.screen.fill(self.mouse.color[1], (
+            self.mouse.x * self.size, self.mouse.y * self.size, self.size, self.size))
 
     def pick_random_location(self, agent, other_agents):
         while True:
@@ -127,7 +178,6 @@ class Game:
     def update(self):
         cur_state = self.get_full_state()
         reward = self.get_reward()
-        self.ai.epsilon = self.age ** -0.2 if self.age > 0 else 0.5
         action = self.ai.choose_action(cur_state)
         self.cat.update(self.env.get_cell(self.mouse.x, self.mouse.y), self.env)
         if self.mouse.get_position() == self.cat.get_position():
@@ -139,3 +189,4 @@ class Game:
         next_state = self.get_full_state()
         self.ai.learn_q(cur_state, action, reward, next_state)
         self.age += 1
+        self.ai.epsilon = self.age ** -0.2

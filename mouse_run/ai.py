@@ -1,5 +1,6 @@
 #-*- coding:utf-8 -*-
 import random
+import json
 from collections import Counter
 from environment import Action
 
@@ -11,6 +12,17 @@ class AI:
         self.alpha = alpha
         self.gamma = gamma
         self.action = Action()
+
+    def dump(self, file_name):
+        with open(file_name, "w") as f:
+            for k, v in self.q.iteritems():
+                f.write(json.dumps({"key": k, "value": v}) + "\n")
+
+    def load(self, file_name):
+        with open(file_name) as f:
+            for line in f:
+                data = json.loads(line.strip())
+                self.q[data["key"]] = data["value"]
 
     def learn_q(self, last_state, action, reward, now_state):
         max_state_value = max([self.q[(now_state, a)] for a in Action.get_actions()])
