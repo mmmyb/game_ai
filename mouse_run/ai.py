@@ -22,7 +22,7 @@ class AI:
         with open(file_name) as f:
             for line in f:
                 data = json.loads(line.strip())
-                self.q[data["key"]] = data["value"]
+                self.q[(tuple(data["key"][0]), data["key"][1])] = data["value"]
 
     def learn_q(self, last_state, action, reward, now_state):
         max_state_value = max([self.q[(now_state, a)] for a in Action.get_actions()])
