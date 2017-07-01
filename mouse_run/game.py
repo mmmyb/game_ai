@@ -8,7 +8,7 @@ import time
 
 
 class Game:
-    def __init__(self, map_file_name):
+    def __init__(self, map_file_name, curiosity=True):
         self.env = Environment(map_file_name)
         self.cat = Cat(("orange", (255, 165, 0)), 0, 0)
         self.mouse = Mouse(("gray", (128, 128, 128)), 0, 0)
@@ -23,6 +23,7 @@ class Game:
         self.size = 40
         self.screen = None
         self.activated = False
+        self.curiosity = curiosity
 
     def show_game(self):
         if self.screen is None:
@@ -41,7 +42,7 @@ class Game:
         self.redraw_cat()
         pygame.display.set_caption("age:%s,feed:%s,eaten:%s" % (self.age, self.feed, self.eaten))
         pygame.display.flip()
-        time.sleep(0.2)
+        time.sleep(0.4)
 
     def redraw_cells(self):
         if self.screen is None:
@@ -53,20 +54,29 @@ class Game:
     def redraw_cat(self):
         if self.screen is None:
             return
+        font = pygame.font.Font(None, 30)
+        label = font.render("Cat", 1, (255, 0, 0))
         self.screen.fill(self.cat.color[1], (
             self.cat.x * self.size, self.cat.y * self.size, self.size, self.size))
+        self.screen.blit(label, (self.cat.x * self.size, self.cat.y * self.size))
 
     def redraw_cheese(self):
         if self.screen is None:
             return
+        font = pygame.font.Font(None, 20)
+        label = font.render("Cheese", 1, (255, 0, 0))
         self.screen.fill(self.cheese.color[1], (
             self.cheese.x * self.size, self.cheese.y * self.size, self.size, self.size))
+        self.screen.blit(label, (self.cheese.x * self.size, self.cheese.y * self.size))
 
     def redraw_mouse(self):
         if self.screen is None:
             return
+        font = pygame.font.Font(None, 20)
+        label = font.render("Mouse", 1, (255, 0, 0))
         self.screen.fill(self.mouse.color[1], (
             self.mouse.x * self.size, self.mouse.y * self.size, self.size, self.size))
+        self.screen.blit(label, (self.mouse.x * self.size, self.mouse.y * self.size))
 
     def pick_random_location(self, agent, other_agents):
         while True:
@@ -83,50 +93,6 @@ class Game:
         agents = [self.cat, self.mouse, self.cheese]
         for cur_a in agents:
             self.pick_random_location(cur_a, [a for a in agents if a != cur_a])
-
-    def get_state(self):
-        """
-        在现有规则下的所有可能状态
-        1.墙里不能有其他东西
-        2.cat,cheese,mouse可以在同一个格
-        """
-        around_cells = []
-        for action in Action.get_straight_actions():
-            cell1 = self.env.get_cell(self.mouse.x, self.mouse.y, action=action)
-            cell2 = self.env.get_cell(cell1.x, cell1.y, action=action)
-            around_cells.extend([cell1, cell2])
-
-        for action in Action.get_sideling_actions():
-            around_cells.append(self.env.get_cell(
-                self.mouse.x, self.mouse.y, action=action))
-
-        state = []
-        cat_position = self.cat.get_position()
-        cheese_position = self.cheese.get_position()
-        mouse_position = self.mouse.get_position()
-        for cell in around_cells:
-            cell_position = cell.get_position()
-            if cell.is_wall():
-                state.append(1)
-            elif cell_position == cat_position == cheese_position:
-                state.append(2)
-            elif cell_position == cat_position:
-                state.append(3)
-            elif cell_position == cheese_position:
-                state.append(4)
-            else:
-                state.append(5)
-
-        if mouse_position == cat_position == cheese_position:
-            state.append(6)
-        elif mouse_position == cat_position:
-            state.append(7)
-        elif mouse_position == cheese_position:
-            state.append(8)
-        else:
-            state.append(9)
-
-        return tuple(state)
 
     def get_full_state(self):
         """
@@ -167,10 +133,8 @@ class Game:
         对于老鼠来说奔跑是需要体力的
         """
         if self.mouse.get_position() == self.cat.get_position():
-            self.eaten += 1
             return -100
         elif self.mouse.get_position() == self.cheese.get_position():
-            self.feed += 1
             return 50
         else:
             return -1
@@ -179,14 +143,15 @@ class Game:
         cur_state = self.get_full_state()
         reward = self.get_reward()
         action = self.ai.choose_action(cur_state)
-        self.cat.update(self.env.get_cell(self.mouse.x, self.mouse.y), self.env)
         if self.mouse.get_position() == self.cat.get_position():
             self.pick_random_location(self.mouse, [self.cat, self.cheese])
+            self.eaten += 1
         elif self.mouse.get_position() == self.cheese.get_position():
             self.pick_random_location(self.cheese, [self.mouse, self.cat])
-        else:
-            self.mouse.update(action, self.env)
+            self.feed += 1
+        self.cat.update(self.env.get_cell(self.mouse.x, self.mouse.y), self.env)
+        self.mouse.update(action, self.env)
         next_state = self.get_full_state()
         self.ai.learn_q(cur_state, action, reward, next_state)
         self.age += 1
-        self.ai.epsilon = self.age ** -0.2
+        self.ai.epsilon = self.age ** -0.2 if self.curiosity else 0

@@ -3,6 +3,11 @@ import random
 import json
 from collections import Counter
 from environment import Action
+from multiprocessing import Pool
+
+
+def load_data(line):
+    return json.loads(line.strip())
 
 
 class AI:
@@ -12,6 +17,7 @@ class AI:
         self.alpha = alpha
         self.gamma = gamma
         self.action = Action()
+        self.pool = Pool(5)
 
     def dump(self, file_name):
         with open(file_name, "w") as f:
@@ -20,9 +26,11 @@ class AI:
 
     def load(self, file_name):
         with open(file_name) as f:
-            for line in f:
-                data = json.loads(line.strip())
-                self.q[(tuple(data["key"][0]), data["key"][1])] = data["value"]
+            lines = f.readlines()
+        for i, data in enumerate(self.pool.imap(load_data, lines)):
+            if i % 100000 == 0:
+                print "load:", round(float(i) / len(lines) * 100, 2), "%,", "lines:", i
+            self.q[(tuple(data["key"][0]), data["key"][1])] = data["value"]
 
     def learn_q(self, last_state, action, reward, now_state):
         max_state_value = max([self.q[(now_state, a)] for a in Action.get_actions()])
